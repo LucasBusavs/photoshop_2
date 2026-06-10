@@ -43,15 +43,20 @@ def main():
 
     meci_img = load_image(MECI_PATH)
     diff_img = difference_between_colored_images(img, meci_img)
+    
     print_img_list.append((diff_img, "Diferença entre Dois Braços e Messi"))
     
     gaussian_img = gaussian_filter(img, 7)
     print_img_list.append((gaussian_img, "Imagem Final (Filtro Gaussiano)", "gray"))
     
+    derivative_img = derivative_filter(img, 7)
+    print_img_list.append((derivative_img, "Imagem Final (Filtro de derivada)", "gray"))
+    
     display_multi_image(print_img_list)
 
     histogram = generate_histogram(img)
     plot_histogram(histogram, "Histograma", "Frequencia")
+    
     normalized_histogram = normalize_histogram(histogram)
     plot_histogram(normalized_histogram, "Histograma Normalizado", "Probabilidade")
     
