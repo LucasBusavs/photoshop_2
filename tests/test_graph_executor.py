@@ -31,7 +31,8 @@ class _ConstantImageBlock(Block):
 def test_brightness_then_threshold_flow():
     workspace = Workspace()
     workspace.add_node(Node("source", _ConstantImageBlock([[10, 20], [30, 200]])))
-    workspace.add_node(Node("bright", BrightnessBlock(), {"bias": 100}))
+    # +40% brightness maps to a +102 intensity shift (0.40 × 255).
+    workspace.add_node(Node("bright", BrightnessBlock(), {"percent": 40}))
     workspace.add_node(Node("thresh", ThresholdBlock(), {"threshold": 128}))
 
     workspace.connect(Connection("source", "image", "bright", "image"))
@@ -39,5 +40,5 @@ def test_brightness_then_threshold_flow():
 
     result = execute_workspace(workspace)
 
-    assert result.outputs_of("bright")["image"] == [[110, 120], [130, 255]]
+    assert result.outputs_of("bright")["image"] == [[112, 122], [132, 255]]
     assert result.outputs_of("thresh")["image"] == [[0, 0], [255, 255]]

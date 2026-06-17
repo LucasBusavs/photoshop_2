@@ -3,6 +3,7 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
+from src.gui import theme
 from src.gui.main_window import MainWindow
 
 
@@ -13,6 +14,7 @@ def run() -> int:
         The Qt application exit code.
     """
     application = QApplication(sys.argv)
+    application.setStyleSheet(theme.build_stylesheet())
     window = MainWindow()
     window.show()
     return application.exec()

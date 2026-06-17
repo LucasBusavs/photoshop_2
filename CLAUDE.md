@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Running the project
 
 ```bash
-pip install -r requirements.txt   # numpy, opencv-python, matplotlib, PySide6
+pip install -r requirements.txt   # numpy, opencv-python, PySide6
 python main.py                    # launches the PySide6 node editor
 ```
 
@@ -43,12 +43,12 @@ inward, never the reverse. You can execute a whole flow without launching Qt.
 
 **Package layout** (`src/`):
 
-- `domain/` — `types` (`ImageMatrix`), `conversion`, `convolution` (`apply_convolution` + `pad_image`), `filters` (median/average/laplacian/gaussian/derivative), `point` (brightness/threshold), `histogram` (compute only — no plotting), `difference`, `complement`, `morphology` (stubs)
-- `blocks/` — `base` (`Block`, `Port`, `Parameter`, `BLOCK_REGISTRY`, `@register_block`), then `io_blocks`, `point_blocks`, `filter_blocks`, `analysis_blocks`. Importing `src.blocks` registers all 14 blocks via side-effect.
+- `domain/` — `types` (`ImageMatrix`), `conversion`, `convolution` (`apply_convolution` + `pad_image`), `filters` (median/average/laplacian/gaussian/derivative), `point` (brightness/threshold), `histogram` (compute only — no plotting), `difference`, `complement`
+- `blocks/` — `base` (`Block`, `Port`, `Parameter`, `BLOCK_REGISTRY`, `@register_block`), then `io_blocks`, `point_blocks`, `filter_blocks`, `analysis_blocks`. Importing `src.blocks` registers all 13 blocks via side-effect. There is no display block: the GUI previews images live from the selected node.
 - `graph/` — `node`, `connection`, `workspace` (cycle detection, port validation), `executor` (Kahn topological sort), `errors`
 - `application/` — `execution_service.run_workspace`, `project_service` (save/load DAG as JSON)
-- `infrastructure/` — `pgm_codec` (hand-written P2 reader/writer), `image_loader` (cv2 + `ImageMatrix`↔NumPy), `file_dialogs` (tkinter)
-- `gui/` — `app.run()`, `main_window` (minimal shell so far); `canvas/`, `panels/`, `widgets/` are scaffolded but not yet implemented
+- `infrastructure/` — `pgm_codec` (hand-written P2 reader/writer + `read_pgm_header`), `image_loader` (`ensure_pgm`: converts any OpenCV-readable image to a cached grayscale PGM so the pipeline only ever sees PGM; cv2 is confined here). File choosing uses Qt's `QFileDialog` directly in the GUI layer.
+- `gui/` — `app.run()` (applies the global stylesheet), `main_window` (the *PSE-Image Studio* shell that wires every piece; continuous live preview + project Open/Save), `theme` (single source of palette, fonts, and the Qt stylesheet — DaVinci-Fusion-inspired dark look), `drag_mime` (the shared block drag-and-drop mime id, kept dependency-free to avoid an import cycle between the library and the canvas). Subpackages: `canvas/` (`GraphScene`/`GraphView` plus `NodeItem`/`PortItem`/`ConnectionItem`; drag-to-connect, deletable links, pan/zoom, dotted grid, block drops), `panels/` (`BlockLibrary`, `Inspector`, `Console`, `ImageViewer` + the public `to_grayscale_qimage`/`first_image` helpers), `dialogs/` (`LoadPgmDialog` — pick any image when a Load PGM block is dropped, it is converted to PGM, then preview/metadata/confirm; `SavePgmDialog` — choose the destination when a Save PGM block is dropped; `HistogramDialog` — bar-chart viewer opened by double-clicking a Histogram node; `block_setup` — the one place mapping a block to its dialog, used both on drop and by the inspector's "Procurar…" path button; dialogs share `layout_helpers`), `widgets/` (`TopBar`; `MatrixEditor` — the odd-sized grid editor for `ParameterType.MATRIX` (Convolution kernel); `ValueSlider` — the labelled slider the inspector renders for any ranged numeric parameter, snapping to `Parameter.step` and showing `Parameter.unit`).
 
 **Key conventions:**
 - A **Block** is stateless; it *declares* ports + parameter specs and implements a pure `process(inputs, parameters)`. Per-node parameter *values* live on `Node`. The GUI renders parameter panels generically from the declarations — never hand-code UI per operation.

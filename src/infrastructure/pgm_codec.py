@@ -46,6 +46,31 @@ def read_pgm_file(file_path: str | Path) -> ImageMatrix:
     return matrix
 
 
+def read_pgm_header(file_path: str | Path) -> tuple[int, int, int]:
+    """Return the (width, height, max_value) declared in a Plain PGM (P2) header.
+
+    Useful for showing image metadata without consuming the pixel payload.
+
+    Args:
+        file_path: Path to the .pgm file.
+
+    Returns:
+        A tuple of width, height, and the maximum intensity value.
+
+    Raises:
+        ValueError: If the file is not a P2 PGM or its header is incomplete.
+        FileNotFoundError: If the file does not exist.
+    """
+    tokens = Path(file_path).read_text().split()
+
+    if len(tokens) < 4:
+        raise ValueError("The PGM file is missing a valid P2 header.")
+    if tokens[0] != "P2":
+        raise ValueError(f"Unsupported format '{tokens[0]}'. Only P2 (ASCII) is allowed.")
+
+    return int(tokens[1]), int(tokens[2]), int(tokens[3])
+
+
 def write_pgm_file(file_path: str | Path, matrix: ImageMatrix) -> None:
     """Serialise an ImageMatrix to a Plain PGM (P2) file.
 

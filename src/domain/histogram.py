@@ -1,4 +1,4 @@
-"""Histogram computation and matching for grayscale images.
+"""Histogram computation for grayscale images.
 
 Plotting lives in the GUI layer (gui/panels); this module only computes.
 """
@@ -29,55 +29,39 @@ def generate_histogram(image: ImageMatrix | np.ndarray) -> list[int]:
     return histogram
 
 
-def normalize_histogram(histogram: list[int]) -> list[float]:
-    """Convert a frequency histogram to a probability distribution.
+def render_histogram_image(
+    histogram: list[int],
+    width: int = 256,
+    height: int = 200,
+) -> ImageMatrix:
+    """Render a histogram as a grayscale bar chart (white bars on black).
+
+    Produces a saveable image so a histogram can be written to a PGM sink.
 
     Args:
-        histogram: Raw frequency counts from generate_histogram.
+        histogram: 256 frequency counts from generate_histogram.
+        width: Output width in pixels (bins are mapped across it).
+        height: Output height in pixels.
 
     Returns:
-        List of 256 floats that sum to 1.0 (or all zeros if histogram is empty).
+        An ImageMatrix of shape height×width with values 0 (background) or 255.
     """
-    total = sum(histogram)
-    if total == 0:
-        return [0.0] * len(histogram)
+    image: ImageMatrix = []
+    for _ in range(height):
+        image.append([0] * width)
 
-    normalized = []
-    for count in histogram:
-        normalized.append(count / total)
+    peak = max(histogram) if histogram else 0
+    if peak == 0:
+        return image
 
-    return normalized
+    bins = len(histogram)
+    for column in range(width):
+        count = histogram[column * bins // width]
+        bar_height = round(count / peak * (height - 1))
+        for row in range(height - bar_height, height):
+            image[row][column] = 255
 
-
-def match_histograms(
-    source: ImageMatrix | np.ndarray,
-    target: ImageMatrix | np.ndarray,
-) -> ImageMatrix | np.ndarray:
-    """Remap source image intensities to match the target histogram.
-
-    Args:
-        source: Image whose histogram will be transformed.
-        target: Image providing the reference histogram.
-
-    Returns:
-        Transformed image in the same format as source (list or ndarray).
-    """
-    source_cdf = _compute_cdf(normalize_histogram(generate_histogram(source)))
-    target_cdf = _compute_cdf(normalize_histogram(generate_histogram(target)))
-    mapping = _build_intensity_map(source_cdf, target_cdf)
-
-    gray = _to_grayscale_uint8(source)
-    matched = []
-
-    for row in gray:
-        matched_row = []
-        for pixel in row:
-            matched_row.append(mapping[_clamp_to_byte(pixel)])
-        matched.append(matched_row)
-
-    if isinstance(source, np.ndarray):
-        return np.array(matched, dtype=np.uint8)
-    return matched
+    return image
 
 
 def _to_grayscale_uint8(image: ImageMatrix | np.ndarray) -> np.ndarray:
@@ -93,37 +77,3 @@ def _clamp_to_byte(value: int | float) -> int:
     if value > 255:
         return 255
     return int(value)
-
-
-def _compute_cdf(normalized: list[float]) -> list[float]:
-    cumulative = []
-    total = 0.0
-
-    for probability in normalized:
-        total += probability
-        cumulative.append(total)
-
-    return cumulative
-
-
-def _build_intensity_map(source_cdf: list[float], target_cdf: list[float]) -> list[int]:
-    mapping: list[int] = [0] * _INTENSITY_LEVELS
-    target_idx = 0
-
-    for source_idx in range(_INTENSITY_LEVELS):
-        while target_idx < _INTENSITY_LEVELS - 1 and target_cdf[target_idx] < source_cdf[source_idx]:
-            target_idx += 1
-
-        if target_idx == 0:
-            mapping[source_idx] = 0
-            continue
-
-        prev_distance = abs(source_cdf[source_idx] - target_cdf[target_idx - 1])
-        curr_distance = abs(source_cdf[source_idx] - target_cdf[target_idx])
-
-        if prev_distance < curr_distance:
-            mapping[source_idx] = target_idx - 1
-        else:
-            mapping[source_idx] = target_idx
-
-    return mapping

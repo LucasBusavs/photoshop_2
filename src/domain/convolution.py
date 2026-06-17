@@ -9,7 +9,7 @@ def pad_image(
     image: ImageMatrix | np.ndarray,
     row_padding: int,
     col_padding: int = 0,
-    fill_value: int = 255,
+    fill_value: int = 0,
 ) -> list[list]:
     """Surround an image with a constant-value border.
 
@@ -18,7 +18,7 @@ def pad_image(
         row_padding: Rows of fill added to top and bottom.
         col_padding: Columns of fill added to left and right.
                      Defaults to row_padding when 0.
-        fill_value: Border pixel value (default 255 — white).
+        fill_value: Border pixel value (default 0 — zero/black padding).
 
     Returns:
         2-D list of shape (H + 2*row_padding) × (W + 2*col_padding).
@@ -59,7 +59,8 @@ def apply_convolution(
         kernel: 2-D list of kernel weights (both dimensions must be odd).
 
     Returns:
-        Convolved image as a uint32 NumPy array.
+        Convolved image clamped to [0, 255] as a uint8 NumPy array. Negative
+        responses (e.g. from a Laplacian kernel) saturate to 0, not to white.
 
     Raises:
         ValueError: If kernel dimensions are even or larger than the image.
@@ -85,10 +86,20 @@ def apply_convolution(
             for ki in range(kernel_height):
                 for kj in range(kernel_width):
                     total += padded[row + ki][col + kj] * kernel[ki][kj]
-            row_data.append(total)
+            row_data.append(_clamp_to_byte(total))
         result_rows.append(row_data)
 
-    return np.array(result_rows, dtype=np.uint32)
+    return np.array(result_rows, dtype=np.uint8)
+
+
+def _clamp_to_byte(value: float) -> int:
+    """Round and saturate a convolution response to the [0, 255] byte range."""
+    rounded = int(round(value))
+    if rounded < 0:
+        return 0
+    if rounded > 255:
+        return 255
+    return rounded
 
 
 def _validate_kernel(

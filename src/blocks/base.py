@@ -21,6 +21,7 @@ class ParameterType(Enum):
     FLOAT = "float"
     TEXT = "text"
     CHOICE = "choice"
+    MATRIX = "matrix"
 
 
 @dataclass(frozen=True)
@@ -32,7 +33,12 @@ class Port:
 
 @dataclass(frozen=True)
 class Parameter:
-    """A user-editable parameter spec the GUI uses to build an input widget."""
+    """A user-editable parameter spec the GUI uses to build an input widget.
+
+    `step` and `unit` are presentation hints: a ranged numeric parameter is shown
+    as a slider that snaps to `step` (e.g. 2 to keep a kernel size odd), and the
+    readout appends `unit` (e.g. "%").
+    """
     name: str
     label: str
     parameter_type: ParameterType
@@ -40,6 +46,9 @@ class Parameter:
     minimum: float | None = None
     maximum: float | None = None
     choices: list[str] = field(default_factory=list)
+    choice_labels: list[str] = field(default_factory=list)
+    step: float = 1
+    unit: str = ""
 
 
 class Block(ABC):

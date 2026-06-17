@@ -48,7 +48,7 @@ def apply_average_filter(image: ImageMatrix | np.ndarray, kernel_size: int = 5) 
         kernel_size: Side length of the square neighbourhood (must be odd).
 
     Returns:
-        Filtered image as a uint32 NumPy array.
+        Filtered image as a uint8 NumPy array (clamped to [0, 255]).
 
     Raises:
         ValueError: If kernel_size is even.
@@ -80,7 +80,7 @@ def apply_laplacian_filter(
         sigma: Standard deviation of the Gaussian component.
 
     Returns:
-        Filtered image as a uint32 NumPy array.
+        Filtered image as a uint8 NumPy array (clamped to [0, 255]).
 
     Raises:
         ValueError: If kernel_size is even or larger than the image.
@@ -103,7 +103,7 @@ def apply_derivative_filter(
         direction: "x" for horizontal gradient, "y" for vertical.
 
     Returns:
-        Filtered image as a uint32 NumPy array.
+        Filtered image as a uint8 NumPy array (clamped to [0, 255]).
 
     Raises:
         ValueError: If kernel_size is even, direction is invalid, or kernel
@@ -122,7 +122,7 @@ def apply_gaussian_filter(image: ImageMatrix | np.ndarray, kernel_size: int = 3)
         kernel_size: Side length of the kernel (must be odd).
 
     Returns:
-        Filtered image as a uint32 NumPy array.
+        Filtered image as a uint8 NumPy array (clamped to [0, 255]).
 
     Raises:
         ValueError: If kernel_size is even or larger than the image.
@@ -177,16 +177,28 @@ def _build_derivative_kernel(kernel_size: int, direction: str) -> list[list[floa
 
 
 def _build_gaussian_kernel(kernel_size: int) -> list[list[float]]:
-    """Build a kernel where each weight is the Euclidean distance from the centre."""
-    padding = kernel_size // 2
-    kernel: list[list[float]] = []
+    """Build a normalised 2-D Gaussian kernel (weights peak at the centre, sum to 1).
 
+    Sigma is derived from the kernel size with the common heuristic
+    `sigma = 0.3·((k-1)/2 - 1) + 0.8`, so a wider kernel blurs more.
+    """
+    padding = kernel_size // 2
+    sigma = 0.3 * ((kernel_size - 1) * 0.5 - 1) + 0.8
+    two_sigma_squared = 2.0 * sigma * sigma
+
+    kernel: list[list[float]] = []
+    total = 0.0
     for y in range(-padding, padding + 1):
         row = []
         for x in range(-padding, padding + 1):
-            distance = math.sqrt(x * x + y * y)
-            row.append(distance)
+            weight = math.exp(-(x * x + y * y) / two_sigma_squared)
+            row.append(weight)
+            total += weight
         kernel.append(row)
+
+    for y in range(kernel_size):
+        for x in range(kernel_size):
+            kernel[y][x] /= total
 
     return kernel
 
@@ -204,7 +216,7 @@ def _median_of_neighbourhood(
             neighbourhood.append(padded[row + ki][col + kj])
 
     neighbourhood.sort()
-    return neighbourhood[(kernel_size * kernel_size + 1) // 2]
+    return neighbourhood[(kernel_size * kernel_size) // 2]
 
 
 def _require_odd(kernel_size: int) -> None:

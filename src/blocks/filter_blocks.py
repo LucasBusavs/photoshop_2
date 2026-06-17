@@ -41,12 +41,12 @@ class ConvolutionBlock(Block):
         return _image_io(self)[1]
 
     def parameters(self) -> list[Parameter]:
-        # The GUI provides a kernel-matrix editor bound to this parameter.
-        return [Parameter("kernel", "Kernel", ParameterType.TEXT, "[[0,1,0],[1,-4,1],[0,1,0]]")]
+        # The inspector renders a grid editor for MATRIX parameters.
+        default_kernel = [[0, 1, 0], [1, -4, 1], [0, 1, 0]]
+        return [Parameter("kernel", "Kernel", ParameterType.MATRIX, default_kernel)]
 
     def process(self, inputs: dict[str, Any], parameters: dict[str, Any]) -> dict[str, Any]:
-        kernel = parameters["kernel"]
-        return {"image": apply_convolution(inputs["image"], kernel)}
+        return {"image": apply_convolution(inputs["image"], parameters["kernel"])}
 
 
 @register_block
@@ -63,7 +63,7 @@ class MedianFilterBlock(Block):
         return _image_io(self)[1]
 
     def parameters(self) -> list[Parameter]:
-        return [Parameter("kernel_size", "Kernel size", ParameterType.INTEGER, 5, 3, 25)]
+        return [Parameter("kernel_size", "Kernel size", ParameterType.INTEGER, 5, 3, 25, step=2)]
 
     def process(self, inputs: dict[str, Any], parameters: dict[str, Any]) -> dict[str, Any]:
         return {"image": apply_median_filter(inputs["image"], parameters["kernel_size"])}
@@ -83,7 +83,7 @@ class AverageFilterBlock(Block):
         return _image_io(self)[1]
 
     def parameters(self) -> list[Parameter]:
-        return [Parameter("kernel_size", "Kernel size", ParameterType.INTEGER, 5, 3, 25)]
+        return [Parameter("kernel_size", "Kernel size", ParameterType.INTEGER, 5, 3, 25, step=2)]
 
     def process(self, inputs: dict[str, Any], parameters: dict[str, Any]) -> dict[str, Any]:
         return {"image": apply_average_filter(inputs["image"], parameters["kernel_size"])}
@@ -104,8 +104,8 @@ class LaplacianFilterBlock(Block):
 
     def parameters(self) -> list[Parameter]:
         return [
-            Parameter("kernel_size", "Kernel size", ParameterType.INTEGER, 3, 3, 25),
-            Parameter("sigma", "Sigma", ParameterType.FLOAT, 1.0, 0.1, 10.0),
+            Parameter("kernel_size", "Kernel size", ParameterType.INTEGER, 3, 3, 25, step=2),
+            Parameter("sigma", "Sigma", ParameterType.FLOAT, 1.0, 0.1, 10.0, step=0.1),
         ]
 
     def process(self, inputs: dict[str, Any], parameters: dict[str, Any]) -> dict[str, Any]:
@@ -131,7 +131,7 @@ class GaussianFilterBlock(Block):
         return _image_io(self)[1]
 
     def parameters(self) -> list[Parameter]:
-        return [Parameter("kernel_size", "Kernel size", ParameterType.INTEGER, 3, 3, 25)]
+        return [Parameter("kernel_size", "Kernel size", ParameterType.INTEGER, 3, 3, 25, step=2)]
 
     def process(self, inputs: dict[str, Any], parameters: dict[str, Any]) -> dict[str, Any]:
         return {"image": apply_gaussian_filter(inputs["image"], parameters["kernel_size"])}
@@ -152,8 +152,15 @@ class DerivativeFilterBlock(Block):
 
     def parameters(self) -> list[Parameter]:
         return [
-            Parameter("kernel_size", "Kernel size", ParameterType.INTEGER, 3, 3, 25),
-            Parameter("direction", "Direction", ParameterType.CHOICE, "x", choices=["x", "y"]),
+            Parameter("kernel_size", "Kernel size", ParameterType.INTEGER, 3, 3, 25, step=2),
+            Parameter(
+                "direction",
+                "Direction",
+                ParameterType.CHOICE,
+                "x",
+                choices=["x", "y"],
+                choice_labels=["Horizontal (x)", "Vertical (y)"],
+            ),
         ]
 
     def process(self, inputs: dict[str, Any], parameters: dict[str, Any]) -> dict[str, Any]:

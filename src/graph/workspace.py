@@ -1,5 +1,4 @@
 """The workspace: the mutable DAG of nodes and connections the user builds."""
-from src.blocks.base import PortDirection
 from src.graph.connection import Connection
 from src.graph.errors import ConnectionError, CycleError
 from src.graph.node import Node

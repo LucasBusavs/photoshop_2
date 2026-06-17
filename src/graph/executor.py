@@ -1,16 +1,16 @@
 """Executes a workspace by running its nodes in topological order."""
 from typing import Any
 
-from src.graph.connection import Connection
-from src.graph.errors import CycleError
+from src.graph.errors import CycleError, MissingInputError
+from src.graph.node import Node
 from src.graph.workspace import Workspace
 
 
 class ExecutionResult:
     """Holds every node's output mapping plus the inputs each node received.
 
-    Sink blocks (Display) produce no outputs, so the GUI reads `inputs_of` to
-    show what reached a display node.
+    Sink blocks (e.g. Save PGM) produce no outputs, so `inputs_of` exposes what
+    reached a node — the live preview uses it to show a node's incoming image.
     """
 
     def __init__(self) -> None:
@@ -42,10 +42,20 @@ def execute_workspace(workspace: Workspace) -> ExecutionResult:
     for node_id in order:
         node = workspace.nodes[node_id]
         gathered_inputs = _gather_inputs(node_id, workspace, result)
+        _require_connected_inputs(node_id, node, gathered_inputs)
         result.inputs[node_id] = gathered_inputs
         result.outputs[node_id] = node.block.process(gathered_inputs, node.parameters)
 
     return result
+
+
+def _require_connected_inputs(node_id: str, node: Node, gathered_inputs: dict[str, Any]) -> None:
+    """Raise MissingInputError if any declared input port has no upstream value."""
+    for port in node.block.input_ports():
+        if gathered_inputs.get(port.name) is None:
+            raise MissingInputError(
+                f"Node '{node_id}' is missing a connection on input '{port.name}'."
+            )
 
 
 def _gather_inputs(
